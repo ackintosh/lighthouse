@@ -421,6 +421,24 @@ where
             .clone()
             .ok_or_else(|| "reduced_tree_fork_choice requires a store")?;
 
+        let finalized_checkpoint = &self
+            .finalized_checkpoint
+            .as_ref()
+            .ok_or_else(|| "fork_choice_backend requires a finalized_checkpoint")?;
+        let genesis_block_root = self
+            .genesis_block_root
+            .ok_or_else(|| "fork_choice_backend requires a genesis_block_root")?;
+
+        let backend = ThreadSafeReducedTree::new(
+            store.clone(),
+            &finalized_checkpoint.beacon_block,
+            finalized_checkpoint.beacon_block_root,
+        );
+
+        let fork_choice =
+            ForkChoice::new(store, backend, genesis_block_root, self.spec.genesis_slot);
+
+        /*
         let fork_choice = if let Some(persisted_beacon_chain) = &self.persisted_beacon_chain {
             ForkChoice::from_ssz_container(
                 persisted_beacon_chain.fork_choice.clone(),
@@ -444,6 +462,7 @@ where
 
             ForkChoice::new(store, backend, genesis_block_root, self.spec.genesis_slot)
         };
+        */
 
         self.fork_choice = Some(fork_choice);
 
