@@ -139,6 +139,8 @@ pub struct BootNodeConfigSerialization {
     // TODO: Generalise to multiaddr
     pub boot_nodes: Vec<Enr>,
     pub local_enr: Enr,
+    pub enable_packet_filter: bool,
+    pub enr_update: bool,
 }
 
 impl BootNodeConfigSerialization {
@@ -150,7 +152,7 @@ impl BootNodeConfigSerialization {
             boot_nodes,
             local_enr,
             local_key: _,
-            discv5_config: _,
+            discv5_config,
             phantom: _,
         } = config;
 
@@ -158,6 +160,8 @@ impl BootNodeConfigSerialization {
             listen_socket: *listen_socket,
             boot_nodes: boot_nodes.clone(),
             local_enr: local_enr.clone(),
+            enable_packet_filter: discv5_config.enable_packet_filter,
+            enr_update: discv5_config.enr_update,
         }
     }
 }
