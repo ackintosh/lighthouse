@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - unstable
+      - trying
   pull_request:
 
 jobs:
