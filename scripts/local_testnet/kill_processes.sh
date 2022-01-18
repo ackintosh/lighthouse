@@ -9,7 +9,12 @@ if [ -f "$1" ]; then
   while read pid
     do
       echo killing $pid
-      kill $pid
+
+      if ps -p $pid > /dev/null; then
+      	kill $pid
+      else
+      	echo "PID $pid is already terminated."
+      fi
     done < $1
 fi
 

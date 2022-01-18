@@ -22,6 +22,7 @@ jobs:
       - name: Install ganache
         run: npm install ganache-cli@latest --global
 
+      # https://github.com/actions/cache/blob/main/examples.md#rust---cargo
       - uses: actions/cache@v2
         id: cache-cargo
         with:
