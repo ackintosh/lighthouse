@@ -41,7 +41,7 @@ pub mod config;
 mod handler;
 pub mod methods;
 mod outbound;
-mod protocol;
+pub mod protocol;
 mod rate_limiter;
 mod self_limiter;
 
