@@ -40,12 +40,12 @@ use self::config::{InboundRateLimiterConfig, OutboundRateLimiterConfig};
 use self::protocol::RPCProtocol;
 use self::self_limiter::SelfRateLimiter;
 
-pub(crate) mod codec;
+pub mod codec;
 pub mod config;
 mod handler;
 pub mod methods;
-mod outbound;
-mod protocol;
+pub mod outbound;
+pub mod protocol;
 mod rate_limiter;
 mod self_limiter;
 
