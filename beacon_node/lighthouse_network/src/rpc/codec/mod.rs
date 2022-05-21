@@ -1,5 +1,5 @@
-pub(crate) mod base;
-pub(crate) mod ssz_snappy;
+pub mod base;
+pub mod ssz_snappy;
 
 use self::base::{BaseInboundCodec, BaseOutboundCodec};
 use self::ssz_snappy::{SSZSnappyInboundCodec, SSZSnappyOutboundCodec};

@@ -32,7 +32,7 @@ pub use methods::{
 pub(crate) use outbound::OutboundRequest;
 pub use protocol::{max_rpc_size, Protocol, RPCError};
 
-pub(crate) mod codec;
+pub mod codec;
 mod handler;
 pub mod methods;
 mod outbound;
