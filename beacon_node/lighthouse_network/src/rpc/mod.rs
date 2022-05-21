@@ -36,7 +36,7 @@ pub mod codec;
 mod handler;
 pub mod methods;
 mod outbound;
-mod protocol;
+pub mod protocol;
 mod rate_limiter;
 
 /// Composite trait for a request id.
