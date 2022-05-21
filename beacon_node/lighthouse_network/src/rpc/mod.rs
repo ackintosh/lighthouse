@@ -36,7 +36,7 @@ use self::config::{InboundRateLimiterConfig, OutboundRateLimiterConfig};
 use self::protocol::RPCProtocol;
 use self::self_limiter::SelfRateLimiter;
 
-pub(crate) mod codec;
+pub mod codec;
 pub mod config;
 mod handler;
 pub mod methods;
