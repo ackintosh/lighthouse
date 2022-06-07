@@ -35,7 +35,7 @@ pub use protocol::{max_rpc_size, Protocol, RPCError};
 pub mod codec;
 mod handler;
 pub mod methods;
-mod outbound;
+pub mod outbound;
 pub mod protocol;
 mod rate_limiter;
 
