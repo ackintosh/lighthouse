@@ -40,7 +40,7 @@ pub mod codec;
 pub mod config;
 mod handler;
 pub mod methods;
-mod outbound;
+pub mod outbound;
 pub mod protocol;
 mod rate_limiter;
 mod self_limiter;
