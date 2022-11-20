@@ -76,7 +76,7 @@ pub struct ClientBuilder<T: BeaconChainTypes> {
     runtime_context: Option<RuntimeContext<T::EthSpec>>,
     chain_spec: Option<ChainSpec>,
     beacon_chain_builder: Option<BeaconChainBuilder<T>>,
-    beacon_chain: Option<Arc<BeaconChain<T>>>,
+    pub beacon_chain: Option<Arc<BeaconChain<T>>>,
     eth1_service: Option<Eth1Service>,
     network_globals: Option<Arc<NetworkGlobals<T::EthSpec>>>,
     network_senders: Option<NetworkSenders<T::EthSpec>>,
