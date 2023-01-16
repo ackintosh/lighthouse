@@ -15,7 +15,7 @@ mod router;
 mod status;
 mod subnet_service;
 #[allow(clippy::mutable_key_type)] // PeerId in hashmaps are no longer permitted by clippy
-mod sync;
+pub mod sync;
 
 pub use lighthouse_network::NetworkConfig;
 pub use service::{
