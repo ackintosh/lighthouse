@@ -300,6 +300,7 @@ impl<AppReqId: ReqId, TSpec: EthSpec> Network<AppReqId, TSpec> {
                 &config,
                 network_globals.clone(),
                 &log,
+                ctx.chain_spec.clone(),
             )
             .await?;
             // start searching for peers

@@ -1,7 +1,9 @@
 //! Identifies each shard by an integer identifier.
 use crate::{AttestationData, ChainSpec, CommitteeIndex, Epoch, EthSpec, Slot};
+use ethereum_types::U256;
 use safe_arith::{ArithError, SafeArith};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use swap_or_not_shuffle::compute_shuffled_index;
 
@@ -128,6 +130,62 @@ impl SubnetId {
         });
         Ok((subnet_set_generator, valid_until_epoch.into()))
     }
+
+    pub fn compute_prefix_mapping_for_epoch<T: EthSpec>(
+        epoch: Epoch,
+        spec: &ChainSpec,
+    ) -> Result<HashMap<SubnetId, Vec<U256>>, &'static str> {
+        const ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS: u8 = 3; // TODO: this should be in the spec.
+
+        // Simplify the variable name
+        let subscription_duration = spec.epochs_per_subnet_subscription;
+
+        let mut map = HashMap::new();
+
+        for i in 0..2_i32.pow(
+            spec.attestation_subnet_prefix_bits as u32
+                + ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS as u32,
+        ) {
+            let node_id = ethereum_types::U256::from(i)
+                << (256
+                    - spec.attestation_subnet_prefix_bits as usize
+                    - ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS as usize);
+
+            let subnet_prefix = node_id >> (256 - spec.attestation_subnet_prefix_bits as usize);
+            let shuffling_bits = node_id
+                >> ((256
+                    - spec.attestation_subnet_prefix_bits as usize
+                    - ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS as usize)
+                    % (1 << ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS));
+            let epoch_transition = (subnet_prefix
+                + (shuffling_bits
+                    * (subscription_duration >> ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS)))
+                % subscription_duration;
+            let subscription_event_idx =
+                (epoch.as_u64() + epoch_transition.as_u64()) / subscription_duration;
+            let num_subnets = 1 << spec.attestation_subnet_prefix_bits;
+            let permutation_seed =
+                ethereum_hashing::hash(&int_to_bytes::int_to_bytes8(subscription_event_idx));
+
+            let permutated_prefix = compute_shuffled_index(
+                subnet_prefix.as_usize(),
+                num_subnets,
+                &permutation_seed,
+                spec.shuffle_round_count,
+            )
+            .ok_or("Unable to shuffle")? as u64;
+
+            // Get the constants we need to avoid holding a reference to the spec
+            let &ChainSpec {
+                attestation_subnet_count,
+                ..
+            } = spec;
+            let subnet_id = SubnetId(permutated_prefix % attestation_subnet_count);
+            map.entry(subnet_id).or_insert(vec![]).push(node_id);
+        }
+
+        Ok(map)
+    }
 }
 
 impl Deref for SubnetId {
@@ -241,6 +299,43 @@ mod tests {
                 expected_subnets[x],
                 computed_subnets.map(SubnetId::into).collect::<Vec<u64>>()
             );
+        }
+    }
+
+    #[test]
+    fn compute_prefix_mapping_for_epoch_unit_test() {
+        let spec = ChainSpec::mainnet();
+        let epochs = [
+            54321u64, 1017090249, 1827566880, 846255942, 766597383, 1204990115, 1616209495,
+            1774367616, 1484598751, 3525502229,
+        ]
+        .into_iter()
+        .map(Epoch::from)
+        .collect::<Vec<_>>();
+
+        for epoch in epochs {
+            let mapping =
+                SubnetId::compute_prefix_mapping_for_epoch::<crate::MainnetEthSpec>(epoch, &spec)
+                    .unwrap();
+            if mapping.len() != 64 {
+                println!("Wrong mapping length. expected:64, actual:{}. [epoch:{epoch}]", mapping.len());
+            }
+
+            for (mapping_subnet_id, node_ids) in mapping.into_iter() {
+                if node_ids.len() != 8 {
+                    println!("Wrong number of node_ids. expected:8, actual:{}. [epoch:{epoch}, subnet_id:{mapping_subnet_id:?}]", node_ids.len());
+                }
+
+                for node_id in node_ids {
+                    // Compute the subnets that should be subscribed to, based on the node_id in the mapping.
+                    let (mut computed_subnet_ids, _) = SubnetId::compute_subnets_for_epoch::<
+                        crate::MainnetEthSpec,
+                    >(node_id, epoch, &spec)
+                    .unwrap();
+                    // The subnet_id in the mapping should be equal to the first element of computed_subnet_ids.
+                    assert_eq!(mapping_subnet_id, computed_subnet_ids.next().unwrap())
+                }
+            }
         }
     }
 }

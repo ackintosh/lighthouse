@@ -4506,6 +4506,7 @@ dependencies = [
  "dirs",
  "discv5",
  "error-chain",
+ "ethereum-types 0.14.1",
  "ethereum_ssz",
  "ethereum_ssz_derive",
  "exit-future",

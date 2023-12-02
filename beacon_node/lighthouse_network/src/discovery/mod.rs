@@ -19,6 +19,7 @@ pub use enr_ext::{peer_id_to_node_id, CombinedKeyExt, EnrExt};
 pub use libp2p::identity::{Keypair, PublicKey};
 
 use enr::{ATTESTATION_BITFIELD_ENR_KEY, ETH2_ENR_KEY, SYNC_COMMITTEE_BITFIELD_ENR_KEY};
+use ethereum_types::U256;
 use futures::prelude::*;
 use futures::stream::FuturesUnordered;
 use libp2p::multiaddr::Protocol;
@@ -44,8 +45,9 @@ use std::{
     task::{Context, Poll},
     time::{Duration, Instant},
 };
+use std::collections::hash_map::Entry;
 use tokio::sync::mpsc;
-use types::{EnrForkId, EthSpec};
+use types::{ChainSpec, EnrForkId, Epoch, EthSpec, SubnetId};
 
 mod subnet_predicate;
 pub use subnet_predicate::subnet_predicate;
@@ -156,6 +158,44 @@ enum EventStream {
     InActive,
 }
 
+struct PrefixMapping {
+    spec: ChainSpec,
+    mapping: HashMap<Epoch, (HashMap<SubnetId, Vec<U256>>, Instant)>,
+    // ttl: u64,
+}
+
+impl PrefixMapping {
+    fn new(spec: ChainSpec) -> Self {
+        Self {
+            mapping: HashMap::new(),
+            // ttl: spec.seconds_per_slot * TSpec::slots_per_epoch() * spec.epochs_per_subnet_subscription, // maybe removed
+            spec,
+        }
+    }
+
+    fn get<TSpec: EthSpec>(&mut self, epoch: Epoch, subnet_id: &SubnetId) -> Result<U256, &'static str> {
+        let mapping = match self.mapping.entry(epoch) {
+            Entry::Occupied(entry) => {
+                entry.get().0.clone()
+            }
+            Entry::Vacant(entry) => {
+                // compute prefixes
+                let mapping = SubnetId::compute_prefix_mapping_for_epoch::<TSpec>(epoch, &self.spec)?;
+                // TODO: update mapping
+                // TODO: remove expired mappings
+
+                mapping
+            }
+        };
+
+        if let Some(node_ids) = mapping.get(subnet_id) {
+            Ok(node_ids[0])
+        } else {
+            Err("todo")
+        }
+    }
+}
+
 /// The main discovery service. This can be disabled via CLI arguements. When disabled the
 /// underlying processes are not started, but this struct still maintains our current ENR.
 pub struct Discovery<TSpec: EthSpec> {
@@ -196,6 +236,8 @@ pub struct Discovery<TSpec: EthSpec> {
 
     /// Logger for the discovery behaviour.
     log: slog::Logger,
+
+    prefix_mapping: PrefixMapping,
 }
 
 impl<TSpec: EthSpec> Discovery<TSpec> {
@@ -205,6 +247,7 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
         config: &NetworkConfig,
         network_globals: Arc<NetworkGlobals<TSpec>>,
         log: &slog::Logger,
+        spec: ChainSpec,
     ) -> error::Result<Self> {
         let log = log.clone();
 
@@ -329,6 +372,7 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
             update_ports,
             log,
             enr_dir,
+            prefix_mapping: PrefixMapping::new(spec),
         })
     }
 
