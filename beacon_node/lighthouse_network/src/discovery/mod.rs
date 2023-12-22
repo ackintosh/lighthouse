@@ -1281,12 +1281,13 @@ mod tests {
             subnet: Subnet::Attestation(SubnetId::new(1)),
             min_ttl: Some(now),
             retries: 0,
+            target: DiscoveryTarget::Prefix(vec![NodeId::random(), NodeId::random()]),
         };
         discovery.add_subnet_query(
             subnet_query.subnet,
             subnet_query.min_ttl,
             subnet_query.retries,
-            DiscoveryTarget::Random,
+            subnet_query.target.clone(),
         );
         assert_eq!(discovery.queued_queries.back(), Some(&subnet_query));
 
@@ -1296,7 +1297,7 @@ mod tests {
             subnet_query.subnet,
             subnet_query.min_ttl,
             1,
-            DiscoveryTarget::Random,
+            subnet_query.target.clone(),
         );
 
         subnet_query.retries += 1;
@@ -1313,7 +1314,7 @@ mod tests {
             subnet_query.subnet,
             subnet_query.min_ttl,
             MAX_DISCOVERY_RETRY + 1,
-            DiscoveryTarget::Random,
+            subnet_query.target.clone(),
         );
 
         assert_eq!(discovery.queued_queries.len(), 0);
@@ -1346,11 +1347,13 @@ mod tests {
                 subnet: Subnet::Attestation(SubnetId::new(1)),
                 min_ttl: instant1,
                 retries: 0,
+                target: DiscoveryTarget::Prefix(vec![NodeId::random(), NodeId::random()]),
             },
             SubnetQuery {
                 subnet: Subnet::Attestation(SubnetId::new(2)),
                 min_ttl: instant2,
                 retries: 0,
+                target: DiscoveryTarget::Prefix(vec![NodeId::random(), NodeId::random()]),
             },
         ]);
 
