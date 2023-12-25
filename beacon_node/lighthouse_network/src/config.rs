@@ -158,6 +158,9 @@ pub struct Config {
 
     /// Configuration for the inbound rate limiter (requests received by this node).
     pub inbound_rate_limiter_config: Option<InboundRateLimiterConfig>,
+
+    /// Whether prefix search for attestation subnets is enabled.
+    pub prefix_search_for_subnet: bool,
 }
 
 impl Config {
@@ -375,6 +378,7 @@ impl Default for Config {
             outbound_rate_limiter_config: None,
             invalid_block_storage: None,
             inbound_rate_limiter_config: None,
+            prefix_search_for_subnet: false,
         }
     }
 }
