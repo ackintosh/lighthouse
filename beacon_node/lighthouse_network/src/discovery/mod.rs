@@ -734,7 +734,7 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
                 .partition(|q| q.target == DiscoveryTarget::Random);
 
             if !random_search.is_empty() {
-                // build the subnet predicate as a combination of the eth2_fork_predicate and the subnet predicate
+                // Build the subnet predicate as a combination of the eth2_fork_predicate and the subnet predicate
                 let subnet_predicate = subnet_predicate::<TSpec>(
                     random_search.iter().map(|q| q.subnet).collect::<Vec<_>>(),
                     &self.log,
@@ -755,10 +755,6 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
             if !prefix_search.is_empty() {
                 // Split the grouped subnet query into individual queries in order to prefix search.
                 for prefix_query in prefix_search {
-                    // build the subnet predicate as a combination of the eth2_fork_predicate and the subnet predicate
-                    let subnet_predicate =
-                        subnet_predicate::<TSpec>(vec![prefix_query.subnet], &self.log);
-
                     // Target node
                     let target_node = match &prefix_query.target {
                         DiscoveryTarget::Random => unreachable!("target should be Prefix here"),
@@ -787,6 +783,9 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
                             }
                         }
                     };
+                    // Build the subnet predicate as a combination of the eth2_fork_predicate and the subnet predicate
+                    let subnet_predicate =
+                        subnet_predicate::<TSpec>(vec![prefix_query.subnet], &self.log);
                     debug!(
                         self.log,
                         "Starting prefix search query";
