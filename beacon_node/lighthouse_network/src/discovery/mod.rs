@@ -808,11 +808,34 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
     /// ENR.
     fn start_query(
         &mut self,
-        query_type: QueryType,
+        mut query_type: QueryType,
         target_node: NodeId,
         target_peers: usize,
         additional_predicate: impl Fn(&Enr) -> bool + Send + 'static,
     ) {
+        match query_type {
+            QueryType::Subnet(subnet_queries) => {
+                let mut new_queries = vec![];
+                for sq in subnet_queries {
+                    match &sq.subnet {
+                        Subnet::Attestation(s) => {
+                            crit!(self.log, "=== TEST === Att net subnet query"; "subnet_id" => ?s);
+                            new_queries.push(sq);
+                        }
+                        Subnet::SyncCommittee(_) => {
+                            crit!(self.log, "=== TEST === Skipped a Sync net subnet query");
+                        }
+                    }
+                }
+
+                query_type = QueryType::Subnet(new_queries);
+            }
+            QueryType::FindPeers => {
+                crit!(self.log, "=== TEST === Skipped a FindPeers query");
+                return;
+            }
+        }
+
         let enr_fork_id = match self.local_enr().eth2() {
             Ok(v) => v,
             Err(e) => {
@@ -968,6 +991,9 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
                         if mapped_results.is_empty() {
                             return None;
                         } else {
+                            let m = discv5::Discv5::<discv5::DefaultProtocolId>::raw_metrics();
+                            crit!(self.log, "=== TEST ==="; "found_nodes" => mapped_results.len(), "bytes_recv" => ?m.bytes_recv, "bytes_sent" => ?m.bytes_sent);
+
                             return Some(mapped_results);
                         }
                     }
