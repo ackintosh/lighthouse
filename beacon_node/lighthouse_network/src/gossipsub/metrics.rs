@@ -22,6 +22,7 @@
 //! protocol.
 
 use std::collections::HashMap;
+use std::process::exit;
 
 use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
 use prometheus_client::metrics::counter::Counter;
@@ -381,12 +382,30 @@ impl Metrics {
         } else if self.topic_info.len() < self.max_topics
             && self.non_subscription_topics_count() < self.max_never_subscribed_topics
         {
+            println!(
+                "{} ackintosh: register_topic_insert: topic:{} topic_info_len:{} max_topics:{} non_subscription_topics_count:{} max_never_subscribed_topics:{}",
+                chrono::Local::now(),
+                topic,
+                self.topic_info.len(),
+                self.max_topics,
+                self.non_subscription_topics_count(),
+                self.max_never_subscribed_topics,
+            );
             // This is a topic without an explicit subscription and we register it if we are within
             // the configured bounds.
             self.topic_info.entry(topic.clone()).or_insert(false);
             self.topic_subscription_status.get_or_create(topic).set(0);
             Ok(())
         } else {
+            println!(
+                "{} ackintosh: register_topic_err: topic:{} topic_info_len:{} max_topics:{} non_subscription_topics_count:{} max_never_subscribed_topics:{}",
+                chrono::Local::now(),
+                topic,
+                self.topic_info.len(),
+                self.max_topics,
+                self.non_subscription_topics_count(),
+                self.max_never_subscribed_topics,
+            );
             // We don't know this topic and there is no space left to store it
             Err(())
         }
@@ -396,12 +415,24 @@ impl Metrics {
     pub(crate) fn inc_topic_peers(&mut self, topic: &TopicHash) {
         if self.register_topic(topic).is_ok() {
             self.topic_peers_count.get_or_create(topic).inc();
+            let n = self.topic_peers_count.get_or_create(topic).get();
+            println!("{} ackintosh: inc_topic_peers_result: topic:{} count:{}", chrono::Local::now(), topic, n);
+        } else {
+            println!("{} ackintosh: inc_topic_peers_not_stored: topic:{}", chrono::Local::now(), topic);
         }
     }
 
     pub(crate) fn dec_topic_peers(&mut self, topic: &TopicHash) {
         if self.register_topic(topic).is_ok() {
             self.topic_peers_count.get_or_create(topic).dec();
+            let n = self.topic_peers_count.get_or_create(topic).get();
+            println!("{} ackintosh: dec_topic_peers_result: topic:{} count:{}", chrono::Local::now(), topic, n);
+            if n.is_negative() {
+                println!("{} ackintosh: negative metrics: {}", chrono::Local::now(), topic);
+                exit(1);
+            }
+        } else {
+            println!("{} ackintosh: dec_topic_peers_not_stored: topic:{}", chrono::Local::now(), topic);
         }
     }
 
@@ -410,8 +441,10 @@ impl Metrics {
     /// Registers the subscription to a topic if the configured limits allow it.
     /// Sets the registered number of peers in the mesh to 0.
     pub(crate) fn joined(&mut self, topic: &TopicHash) {
+        println!("{} ackintosh: joined: topic:{}", chrono::Local::now(), topic);
         if self.topic_info.contains_key(topic) || self.topic_info.len() < self.max_topics {
-            self.topic_info.insert(topic.clone(), true);
+            let maybe_old_value = self.topic_info.insert(topic.clone(), true);
+            println!("{} ackintosh: joined_result: topic:{} old_value:{:?}", chrono::Local::now(), topic, maybe_old_value);
             let was_subscribed = self.topic_subscription_status.get_or_create(topic).set(1);
             debug_assert_eq!(was_subscribed, 0);
             self.mesh_peer_counts.get_or_create(topic).set(0);

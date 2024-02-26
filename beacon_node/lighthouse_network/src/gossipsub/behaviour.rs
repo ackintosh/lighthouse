@@ -858,7 +858,7 @@ where
     }
 
     /// Activates the peer scoring system with the given parameters. This will reset all scores
-    /// if there was already another peer scoring system activated. Returns an error if the
+    /// if there was already another peer scoring system /**/activated. Returns an error if the
     /// params are not valid or if they got already set.
     pub fn with_peer_score(
         &mut self,
@@ -1382,6 +1382,7 @@ where
             };
             if connected_peer.topics.insert(topic.clone()) {
                 if let Some(m) = self.metrics.as_mut() {
+                    println!("{} ackintosh: inc_topic_peers: handle_graft: topic:{} peer:{}", chrono::Local::now(), topic, peer_id);
                     m.inc_topic_peers(topic);
                 }
             }
@@ -1920,6 +1921,7 @@ where
                         );
 
                         if let Some(m) = self.metrics.as_mut() {
+                            println!("{} ackintosh: inc_topic_peers: handle_received_subscriptions: topic:{} peer:{}", chrono::Local::now(),topic_hash, propagation_source);
                             m.inc_topic_peers(topic_hash);
                         }
                     }
@@ -1977,6 +1979,7 @@ where
                         );
 
                         if let Some(m) = self.metrics.as_mut() {
+                            println!("{} ackintosh: dec_topic_peers: handle_received_subscriptions: topic:{} peer:{}", chrono::Local::now(), topic_hash, propagation_source);
                             m.dec_topic_peers(topic_hash);
                         }
                     }
@@ -2929,6 +2932,7 @@ where
                 }
 
                 if let Some(m) = self.metrics.as_mut() {
+                    println!("{} ackintosh: dec_topic_peers: on_connection_closed: topic:{} peer:{}", chrono::Local::now(), topic, peer_id);
                     m.dec_topic_peers(topic);
                 }
 

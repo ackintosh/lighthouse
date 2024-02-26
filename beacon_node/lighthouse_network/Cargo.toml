@@ -47,6 +47,8 @@ byteorder = { workspace = true }
 bytes = { workspace = true }
 either = { workspace = true }
 
+chrono = "0.4.34"
+
 # Local dependencies
 futures-ticker = "0.0.3"
 futures-timer = "3.0.2"
