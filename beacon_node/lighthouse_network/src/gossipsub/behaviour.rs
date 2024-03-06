@@ -579,6 +579,7 @@ where
     ) -> Result<MessageId, PublishError> {
         let data = data.into();
         let topic = topic.into();
+        println!("akintosh publish topic:{}", topic);
 
         // Transform the data before building a raw_message.
         let transformed_data = self
