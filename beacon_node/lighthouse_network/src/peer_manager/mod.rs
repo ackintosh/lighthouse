@@ -33,6 +33,8 @@ use peerdb::score::{PeerAction, ReportSource};
 pub use peerdb::sync_status::{SyncInfo, SyncStatus};
 use std::collections::{hash_map::Entry, HashMap};
 use std::net::IpAddr;
+use crate::peer_manager::peerdb::client::ClientKind;
+
 pub mod config;
 mod network_behaviour;
 
@@ -770,6 +772,12 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
                 .into_iter()
                 .map(|(peer_id, unbanned_ips)| PeerManagerEvent::UnBanned(peer_id, unbanned_ips)),
         );
+
+        println!("ackintosh aa {}", peer_id);
+        if let Some(info) = self.network_globals.peers.read().peer_info(peer_id) {
+            println!("ackintosh bb {} {}", peer_id, info.client().kind);
+            metrics::dec_gauge_vec(&metrics::PEERS_PER_CLIENT, &[info.client().kind.as_ref()]);
+        }
     }
 
     /// Registers a peer as connected. The `ingoing` parameter determines if the peer is being
@@ -791,6 +799,27 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
                 error!(self.log, "Connection has been allowed to a banned peer"; "peer_id" => %peer_id);
             }
 
+            if matches!(connection, ConnectingType::IngoingConnected { .. } | ConnectingType::OutgoingConnected { .. }) {
+                // println!("ackintosh inject_peer_connection {}", peer_id);
+                // if peerdb.peer_info(peer_id).is_none() {
+                let (connection_status, client_kind) = if let Some(info) = peerdb.peer_info(peer_id) {
+                    (format!("{:?}", info.connection_status()), info.client().kind.to_string())
+                } else {
+                    ("none".to_string(), "none".to_string())
+                };
+                println!("ackintosh inject_peer_connection {} connection_status:{} client_kind:{}", peer_id, connection_status, client_kind);
+
+                let client_kind = if let Some(info) = peerdb.peer_info(peer_id) {
+                    info.client().kind
+                } else {
+                    ClientKind::Unknown
+                };
+                metrics::inc_gauge_vec(&metrics::PEERS_PER_CLIENT, &[client_kind.as_ref()]);
+                // }
+
+            }
+            debug();
+
             match connection {
                 ConnectingType::Dialing => {
                     peerdb.dialing_peer(peer_id, enr);
@@ -807,6 +836,7 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
                     self.outbound_ping_peers.insert(*peer_id);
                 }
             }
+
         }
 
         // start a ping and status timer for the peer
@@ -2315,4 +2345,20 @@ mod tests {
             })
         }
     }
+}
+
+fn debug() {
+    let clients = vec![
+        ClientKind::Lighthouse, ClientKind::Nimbus, ClientKind::Teku, ClientKind::Prysm, ClientKind::Lodestar, ClientKind::Caplin, ClientKind::Unknown,
+    ];
+
+    let mut map = HashMap::new();
+    for c in clients {
+        if let Some(gauge) = metrics::get_int_gauge(&metrics::PEERS_PER_CLIENT, &[c.as_ref()]) {
+            map.insert(c.to_string(), gauge.get());
+            // println!("lighthouse {}", gauge.get());
+        }
+    }
+
+    println!("ackintosh map {:?}", map);
 }
