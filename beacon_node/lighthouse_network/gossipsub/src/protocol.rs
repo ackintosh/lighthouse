@@ -417,6 +417,7 @@ impl Decoder for GossipsubCodec {
         let mut control_msgs = Vec::new();
 
         if let Some(rpc_control) = rpc.control {
+            tracing::warn!("GossipsubCodec rpc_control {:?}", rpc_control);
             // Collect the gossipsub control messages
             let ihave_msgs: Vec<ControlAction> = rpc_control
                 .ihave

@@ -1808,6 +1808,7 @@ where
 
         // Calculate the message id on the transformed data.
         let msg_id = self.config.message_id(&message);
+        tracing::warn!("handle_received_message. msg_id:{}", msg_id);
 
         // Broadcast IDONTWANT messages.
         self.send_idontwant(&raw_message, &msg_id, propagation_source);
@@ -2692,7 +2693,9 @@ where
         msg_id: &MessageId,
         propagation_source: &PeerId,
     ) {
+        tracing::warn!("send_idontwant msg_id: {msg_id}");
         let Some(mesh_peers) = self.mesh.get(&message.topic) else {
+            tracing::warn!("Returning from send_idontwant. no mesh peers. msg_id: {msg_id}");
             return;
         };
 
@@ -2705,6 +2708,10 @@ where
                 *peer_id != propagation_source && Some(*peer_id) != message.source.as_ref()
             });
 
+        if recipient_peers.clone().count() == 0 {
+            tracing::warn!("Skipping send_idontwant.recipient_peers.count() == 0. msg_id: {msg_id}");
+        }
+
         for peer_id in recipient_peers {
             let Some(peer) = self.connected_peers.get_mut(peer_id) else {
                 tracing::error!(peer = %peer_id,
@@ -2714,9 +2721,11 @@ where
 
             // Only gossipsub 1.2 peers support IDONTWANT.
             if peer.kind != PeerKind::Gossipsubv1_2 {
+                tracing::warn!(peer=%peer_id, "Skipping IDONTWANT. msg_id: {msg_id}");
                 continue;
             }
 
+            tracing::warn!(peer=%peer_id, "Sending IDONTWANT. msg_id: {msg_id}");
             if peer
                 .sender
                 .idontwant(IDontWant {
@@ -3265,6 +3274,7 @@ where
                 invalid_messages,
             } => {
                 // Handle the gossipsub RPC
+                tracing::warn!("on_connection_handler_event. rpc: {rpc:?} peer_score: {:?}", self.peer_score.is_some());
 
                 // Handle subscriptions
                 // Update connected peers topics
@@ -3302,7 +3312,7 @@ where
                 }
 
                 // Handle messages
-                for (count, raw_message) in rpc.messages.into_iter().enumerate() {
+                for (count, raw_message) in rpc.messages.clone().into_iter().enumerate() {
                     // Only process the amount of messages the configuration allows.
                     if self.config.max_messages_per_rpc().is_some()
                         && Some(count) >= self.config.max_messages_per_rpc()
@@ -3318,6 +3328,7 @@ where
                 let mut ihave_msgs = vec![];
                 let mut graft_msgs = vec![];
                 let mut prune_msgs = vec![];
+                tracing::warn!(peer = %propagation_source,"Handling control_msgs. len:{} msg_len:{}", rpc.control_msgs.len(), rpc.messages.len());
                 for control_msg in rpc.control_msgs {
                     match control_msg {
                         ControlAction::IHave(IHave {
@@ -3342,8 +3353,12 @@ where
                                     "Could not handle IDONTWANT, peer doesn't exist in connected peer list");
                                 continue;
                             };
+                            tracing::warn!(peer = %propagation_source,"Handling IDONTWANT.");
                             if let Some(metrics) = self.metrics.as_mut() {
+                                tracing::warn!(peer = %propagation_source, "Registering IDONTWANT metrics. len: {}", message_ids.len());
                                 metrics.register_idontwant(message_ids.len());
+                            } else {
+                                tracing::warn!(peer = %propagation_source, "Skipped registering IDONTWANT metrics. len: {}", message_ids.len());
                             }
                             for message_id in message_ids {
                                 peer.dont_send.insert(message_id, Instant::now());

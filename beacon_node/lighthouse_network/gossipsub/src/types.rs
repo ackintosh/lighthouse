@@ -354,6 +354,7 @@ impl RpcOut {
 impl From<RpcOut> for proto::RPC {
     /// Converts the RPC into protobuf format.
     fn from(rpc: RpcOut) -> Self {
+        println!("RPC::from {rpc:?}");
         match rpc {
             RpcOut::Publish {
                 message,
