@@ -4,7 +4,7 @@
 use super::methods::{GoodbyeReason, RPCCodedResponse, RPCResponseErrorCode};
 use super::outbound::OutboundRequestContainer;
 use super::protocol::{InboundOutput, InboundRequest, Protocol, RPCError, RPCProtocol};
-use super::{RPCReceived, RPCSend, ReqId};
+use super::{MonitorMutex, RPCReceived, RPCSend, ReqId};
 use crate::rpc::outbound::{OutboundFramed, OutboundRequest};
 use crate::rpc::protocol::InboundFramed;
 use crate::rpc::rate_limiter::{RPCRateLimiter, RateLimitedErr};
@@ -145,7 +145,7 @@ where
 
     /// Rate limiter for our responses and the PeerId that this handler interacts with.
     /// The PeerId is necessary since the rate limiter manages rate limiting per peer.
-    response_limiter: Option<(PeerId, Arc<Mutex<RPCRateLimiter>>)>,
+    response_limiter: Option<(PeerId, Arc<MonitorMutex>)>,
 
     /// Responses queued for sending. These responses are stored when the response limiter rejects them.
     delayed_responses: FnvHashMap<Protocol, VecDeque<QueuedResponse<E>>>,
@@ -241,7 +241,7 @@ where
         fork_context: Arc<ForkContext>,
         log: &slog::Logger,
         resp_timeout: Duration,
-        response_limiter: Option<(PeerId, Arc<Mutex<RPCRateLimiter>>)>,
+        response_limiter: Option<(PeerId, Arc<MonitorMutex>)>,
     ) -> Self {
         RPCHandler {
             listen_protocol,
@@ -314,7 +314,7 @@ where
     /// Checks if the response limiter allows the response. If the response should be delayed, the
     /// duration to wait is returned.
     fn try_response_limiter(
-        limiter: &mut Arc<Mutex<RPCRateLimiter>>,
+        limiter: &mut Arc<MonitorMutex>,
         peer_id: &PeerId,
         protocol: Protocol,
         response: RPCCodedResponse<E>,

@@ -12,13 +12,17 @@ use libp2p::swarm::{
 };
 use libp2p::swarm::{ConnectionClosed, FromSwarm, SubstreamProtocol, THandlerInEvent};
 use libp2p::PeerId;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use rate_limiter::RPCRateLimiter as RateLimiter;
 use slog::{crit, debug, o};
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::task::{Context, Poll};
 use std::time::Duration;
+use prometheus_client::metrics::gauge::Atomic;
+use tokio::time::Instant;
 use types::{EthSpec, ForkContext};
 
 pub(crate) use handler::{HandlerErr, HandlerEvent};
@@ -118,11 +122,54 @@ pub struct NetworkParams {
     pub resp_timeout: Duration,
 }
 
+struct MonitorMutex {
+    inner: Mutex<RateLimiter>,
+    // wait_time: AtomicU64,
+}
+
+impl MonitorMutex {
+    fn new(limiter: RateLimiter) -> Self {
+        MonitorMutex {
+            inner: Mutex::new(limiter),
+            // wait_time: AtomicU64::new(0),
+        }
+    }
+
+    fn lock(&self) -> MutexGuard<RateLimiter> {
+        let start = Instant::now();
+        let guard = self.inner.lock();
+        let duration = start.elapsed().as_nanos() as u64;
+        println!("MonitorMutex:{}", duration);
+        // self.wait_time.fetch_add(duration, Ordering::Relaxed);
+        guard
+    }
+}
+
+impl Deref for MonitorMutex {
+    type Target = Mutex<RateLimiter>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for MonitorMutex {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+// impl Drop for MonitorMutex {
+//     fn drop(&mut self) {
+//         println!("[MonitorMutex] total wait time (nano):{}", self.wait_time.load(Ordering::Relaxed));
+//     }
+// }
+
 /// Implements the libp2p `NetworkBehaviour` trait and therefore manages network-level
 /// logic.
 pub struct RPC<Id: ReqId, E: EthSpec> {
     /// Rate limiter for our responses. This is shared with RPCHandlers.
-    response_limiter: Option<Arc<Mutex<RateLimiter>>>,
+    response_limiter: Option<Arc<MonitorMutex>>,
     /// Rate limiter for our own requests.
     outbound_request_limiter: Option<SelfRateLimiter<Id, E>>,
     /// Limiter for inbound requests, which checks the request size.
@@ -153,7 +200,7 @@ impl<Id: ReqId, E: EthSpec> RPC<Id, E> {
 
         let response_limiter = inbound_rate_limiter_config.clone().map(|config| {
             debug!(log, "Using response rate limiting params"; "config" => ?config);
-            Arc::new(Mutex::new(
+            Arc::new(MonitorMutex::new(
                 RateLimiter::new_with_config(config.0)
                     .expect("Inbound limiter configuration parameters are valid"),
             ))
