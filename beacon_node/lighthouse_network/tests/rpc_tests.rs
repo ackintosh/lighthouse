@@ -1169,7 +1169,7 @@ fn test_delayed_rpc_response() {
                         id: _,
                         response,
                     } => {
-                        debug!(log, "Sender received"; "request_id" => request_id);
+                        debug!(log, "Sender received"; "request_id" => request_id, "elapsed" => ?request_sent_at.elapsed());
                         assert_eq!(response, rpc_response);
 
                         match request_id {
