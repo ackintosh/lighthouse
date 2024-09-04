@@ -70,6 +70,8 @@ use types::{typenum::U4294967296, *};
 pub const HARNESS_GENESIS_TIME: u64 = 1_567_552_690;
 // Environment variable to read if `fork_from_env` feature is enabled.
 pub const FORK_NAME_ENV_VAR: &str = "FORK_NAME";
+// Environment variable to read if `ci_logger` feature is enabled.
+pub const CI_LOGGER_DIR_ENV_VAR: &str = "CI_LOGGER_DIR";
 
 // Default target aggregators to set during testing, this ensures an aggregator at each slot.
 //
@@ -2614,11 +2616,11 @@ fn test_decorator() -> TermDecorator {
 }
 
 fn ci_decorator() -> PlainSyncDecorator<BufWriter<File>> {
-    let log_dir = std::env::var("CI_LOGGER_DIR").unwrap_or_else(|e| {
-        panic!("CI_LOGGER_DIR env var must be defined when using ci_logger: {e:?}");
+    let log_dir = std::env::var(CI_LOGGER_DIR_ENV_VAR).unwrap_or_else(|e| {
+        panic!("{CI_LOGGER_DIR_ENV_VAR} env var must be defined when using ci_logger: {e:?}");
     });
     let fork_name = std::env::var(FORK_NAME_ENV_VAR)
-        .map(|n| format!("_{n}"))
+        .map(|n| format!("{n}_"))
         .unwrap_or_default();
     let test_name = std::thread::current()
         .name()
