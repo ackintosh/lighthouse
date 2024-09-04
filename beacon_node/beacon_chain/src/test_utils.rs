@@ -2617,12 +2617,15 @@ fn ci_decorator() -> PlainSyncDecorator<BufWriter<File>> {
     let log_dir = std::env::var("CI_LOGGER_DIR").unwrap_or_else(|e| {
         panic!("CI_LOGGER_DIR env var must be defined when using ci_logger: {e:?}");
     });
+    let fork_name = std::env::var(FORK_NAME_ENV_VAR)
+        .map(|n| format!("_{n}"))
+        .unwrap_or_default();
     let test_name = std::thread::current()
         .name()
         .unwrap()
         .to_string()
         .replace("::", "_");
-    let log_path = format!("/{log_dir}/{test_name}.log");
+    let log_path = format!("/{log_dir}/{fork_name}{test_name}.log");
     let file = OpenOptions::new()
         .create(true)
         .write(true)
