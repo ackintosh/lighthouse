@@ -15,7 +15,7 @@ use types::{
 
 type E = MinimalEthSpec;
 
-use lighthouse_network::rpc::config::InboundRateLimiterConfig;
+use lighthouse_network::rpc::config::{InboundRateLimiterConfig, OutboundRateLimiterConfig};
 use tempfile::Builder as TempBuilder;
 
 /// Returns a dummy fork context
@@ -99,6 +99,7 @@ pub fn build_config(
     config.network_dir = path.into_path();
     config.disable_peer_scoring = disable_peer_scoring;
     config.inbound_rate_limiter_config = inbound_rate_limiter;
+    config.outbound_rate_limiter_config = Some(OutboundRateLimiterConfig::default());
     Arc::new(config)
 }
 

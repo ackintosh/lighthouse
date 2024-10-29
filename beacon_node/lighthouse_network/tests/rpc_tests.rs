@@ -3,6 +3,7 @@
 mod common;
 
 use common::Protocol;
+use lighthouse_network::rpc::config::InboundRateLimiterConfig;
 use lighthouse_network::rpc::{methods::*, RequestType};
 use lighthouse_network::service::api_types::{AppRequestId, SyncRequestId};
 use lighthouse_network::{rpc::max_rpc_size, rpc::RPCError, NetworkEvent, ReportSource, Response};
@@ -1389,16 +1390,18 @@ fn test_request_too_large() {
     });
 }
 
-// Test whether a request using the same protocol as another active request on the receiver
-// triggers a rate-limited error.
 #[test]
-fn test_active_requests() {
+fn test_concurrent_requests_rate_limiter() {
     let rt = Arc::new(Runtime::new().unwrap());
     let log = logging::test_logger();
     let spec = Arc::new(E::default_spec());
 
     rt.block_on(async {
+        // ////////////////////////////////////////////////////////////////////
         // Get sender/receiver.
+        //
+        // In this test, the inbound/outbound rate limiter is set to the default config. See `build_config()`
+        // ////////////////////////////////////////////////////////////////////
         let (mut sender, mut receiver) = common::build_node_pair(
             Arc::downgrade(&rt),
             &log,
@@ -1406,7 +1409,7 @@ fn test_active_requests() {
             spec,
             Protocol::Tcp,
             false,
-            None,
+            Some(InboundRateLimiterConfig::default()),
         )
         .await;
 
@@ -1428,18 +1431,19 @@ fn test_active_requests() {
             head_slot: Slot::new(1),
         });
 
-        // Build the sender future.
+        // ////////////////////////////////////////////////////////////////////
+        // The sender future.
+        //
+        // The sender first sends two requests, then sends another request once a response is
+        // received from the receiver. In other words, the sender maintains two (or fewer) active requests at a time.
+        // ////////////////////////////////////////////////////////////////////
+        let receiver_peer_id = receiver.local_peer_id;
         let sender_future = async {
-            let mut response_received = 0;
-            let mut rate_limited = 0;
             loop {
                 match sender.next_event().await {
                     NetworkEvent::PeerConnectedOutgoing(peer_id) => {
                         debug!(log, "Sending RPC request");
-                        // Send requests in quick succession to intentionally trigger a rate-limited error.
-                        sender
-                            .send_request(peer_id, AppRequestId::Router, rpc_request.clone())
-                            .unwrap();
+                        // Send two requests because of MAX_CONCURRENT_REQUESTS = 2.
                         sender
                             .send_request(peer_id, AppRequestId::Router, rpc_request.clone())
                             .unwrap();
@@ -1450,7 +1454,14 @@ fn test_active_requests() {
                     NetworkEvent::ResponseReceived { response, .. } => {
                         debug!(log, "Sender received response"; "response" => ?response);
                         if matches!(response, Response::Status(_)) {
-                            response_received += 1;
+                            // Send another request once a response is received.
+                            sender
+                                .send_request(
+                                    receiver_peer_id,
+                                    AppRequestId::Router,
+                                    rpc_request.clone(),
+                                )
+                                .unwrap();
                         }
                     }
                     NetworkEvent::RPCFailed {
@@ -1463,37 +1474,27 @@ fn test_active_requests() {
                             error,
                             RPCError::ErrorResponse(RpcErrorResponse::RateLimited, ..)
                         ));
-                        rate_limited += 1;
+                        panic!("RCP failed");
                     }
                     _ => {}
-                }
-
-                // The sender sent 3 requests, and 1 rate-limited error is expected due to the MAX_CONCURRENT_REQUESTS limit.
-                if response_received + rate_limited == 3 {
-                    assert_eq!(1, rate_limited);
-                    return;
                 }
             }
         };
 
-        // Build the receiver future.
+        // ////////////////////////////////////////////////////////////////////
+        // The receiver future.
+        // ////////////////////////////////////////////////////////////////////
         let receiver_future = async {
-            let mut received_requests = vec![];
             loop {
-                tokio::select! {
-                    event = receiver.next_event() => {
-                       if let NetworkEvent::RequestReceived { peer_id, id, request } = event {
-                            debug!(log, "Receiver received request"; "request" => ?request);
-                            if matches!(request.r#type, RequestType::Status(_)) {
-                                received_requests.push((peer_id, id, request.id));
-                            }
-                        }
-                    }
-                    // Introduce a delay in sending responses to trigger a rate-limited error.
-                    _ = sleep(Duration::from_secs(5)) => {
-                        for (peer_id, id, request_id) in received_requests.drain(..) {
-                            receiver.send_response(peer_id, id, request_id, rpc_response.clone());
-                        }
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    id,
+                    request,
+                } = receiver.next_event().await
+                {
+                    debug!(log, "Receiver received request"; "request" => ?request);
+                    if matches!(request.r#type, RequestType::Status(_)) {
+                        receiver.send_response(peer_id, id, request.id, rpc_response.clone());
                     }
                 }
             }
@@ -1503,7 +1504,8 @@ fn test_active_requests() {
             _ = sender_future => {}
             _ = receiver_future => {}
             _ = sleep(Duration::from_secs(30)) => {
-                panic!("Future timed out");
+                debug!(log, "The test has finished");
+                return;
             }
         }
     })
