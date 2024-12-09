@@ -566,6 +566,7 @@ where
                     HandlerErr::Inbound { proto, .. } => proto,
                     HandlerErr::Outbound { proto, .. } => proto,
                 };
+                error!(self.log, "ackintosh HandlerEvent::Err"; "protocol" => %protocol, "peer_id" => %peer_id, "error" => ?err);
                 self.outbound_request_limiter
                     .request_completed(&peer_id, protocol);
 
@@ -576,6 +577,7 @@ where
                 }));
             }
             HandlerEvent::Close(_) => {
+                error!(self.log, "ackintosh HandlerEvent::Close"; "peer_id" => %peer_id);
                 // Handle the close event here.
                 self.events.push(ToSwarm::CloseConnection {
                     peer_id,
