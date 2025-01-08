@@ -41,6 +41,7 @@ bls = { workspace = true }
 boot_node = { path = "../boot_node" }
 clap = { workspace = true }
 clap_utils = { workspace = true }
+console-subscriber = { workspace = true }
 database_manager = { path = "../database_manager" }
 directory = { workspace = true }
 environment = { workspace = true }

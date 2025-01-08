@@ -91,6 +91,9 @@ fn main() {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 
+    #[cfg(tokio_unstable)]
+    console_subscriber::init();
+
     // Parse the CLI parameters.
     let cli = Command::new("Lighthouse")
         .version(SHORT_VERSION.as_str())
