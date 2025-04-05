@@ -2,6 +2,11 @@ name: docker
 
 on:
     push:
+#      branches:
+#        - unstable
+#        - stable
+#      tags:
+#        - v*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -63,9 +68,9 @@ jobs:
             - name: Update Rust
               if: env.SELF_HOSTED_RUNNERS == 'false'
               run: rustup update stable
-            - name: Dockerhub login
-              run: |
-                  echo "${DOCKER_PASSWORD}" | docker login --username ${DOCKER_USERNAME} --password-stdin
+#            - name: Dockerhub login
+#              run: |
+#                  echo "${DOCKER_PASSWORD}" | docker login --username ${DOCKER_USERNAME} --password-stdin
 
             - name: Sets env vars for Lighthouse
               if: startsWith(matrix.binary, 'lighthouse')
