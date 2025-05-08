@@ -8,7 +8,7 @@ mod persisted_dht;
 mod router;
 mod status;
 mod subnet_service;
-mod sync;
+pub mod sync;
 
 pub use lighthouse_network::NetworkConfig;
 pub use service::{

@@ -38,12 +38,12 @@ pub use methods::{
 };
 pub use protocol::{Protocol, RPCError};
 
-pub(crate) mod codec;
+pub mod codec;
 pub mod config;
 mod handler;
 pub mod methods;
-mod outbound;
-mod protocol;
+pub mod outbound;
+pub mod protocol;
 mod rate_limiter;
 mod response_limiter;
 mod self_limiter;
