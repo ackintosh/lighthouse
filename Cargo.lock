@@ -5520,6 +5520,7 @@ dependencies = [
  "libp2p-mplex",
  "lighthouse_version",
  "local-ip-address",
+ "log",
  "logging",
  "lru",
  "lru_cache",

@@ -49,6 +49,7 @@ tracing-subscriber = { workspace = true }
 types = { workspace = true }
 unsigned-varint = { version = "0.8", features = ["codec"] }
 unused_port = { workspace = true }
+log = "0.4.27"
 
 [dependencies.libp2p]
 version = "0.55"

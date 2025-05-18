@@ -1159,6 +1159,7 @@ fn quic_test_goodbye_rpc() {
 // Test that the receiver delays the responses during response rate-limiting.
 #[test]
 fn test_delayed_rpc_response() {
+    build_tracing_subscriber("debug", true);
     let rt = Arc::new(Runtime::new().unwrap());
     let spec = Arc::new(E::default_spec());
 
@@ -1217,6 +1218,7 @@ fn test_delayed_rpc_response() {
                         debug!(%request_id, "Sender received");
                         assert_eq!(response, rpc_response);
 
+                        error!("ackintosh request_sent_at.elapsed(): {:?}", request_sent_at.elapsed());
                         match request_id {
                             1 => {
                                 // The first response is returned instantly.
@@ -1261,6 +1263,7 @@ fn test_delayed_rpc_response() {
 
         // build the receiver future
         let receiver_future = async {
+            let mut request_id = 1;
             loop {
                 if let NetworkEvent::RequestReceived {
                     peer_id,
@@ -1269,8 +1272,15 @@ fn test_delayed_rpc_response() {
                 } = receiver.next_event().await
                 {
                     assert_eq!(request_type, rpc_request);
-                    debug!("Receiver received request");
+                    debug!(request_id, "Receiver received request");
+                    // if request_id == 1 {
+                    //     error!(request_id, "Receiver sleeping");
+                    //     tokio::time::sleep(Duration::from_millis(90)).await;
+                        // tokio::time::sleep(Duration::from_secs(2)).await;
+                        // error!(request_id, "Receiver sleeping -> done");
+                    // }
                     receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
+                    request_id += 1;
                 }
             }
         };

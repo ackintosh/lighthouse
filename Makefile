@@ -114,7 +114,7 @@ test-release:
 # Runs the full workspace tests in **release**, without downloading any additional
 # test vectors, using nextest.
 nextest-release:
-	cargo nextest run --workspace --release --features "$(TEST_FEATURES)" \
+	cargo nextest run --package lighthouse_network --release --features "$(TEST_FEATURES)" \
 		--exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network
 
 # Runs the full workspace tests in **debug**, without downloading any additional test
