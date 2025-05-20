@@ -114,7 +114,7 @@ test-release:
 # Runs the full workspace tests in **release**, without downloading any additional
 # test vectors, using nextest.
 nextest-release:
-	cargo nextest run --package lighthouse_network --release
+	cargo nextest run --package lighthouse_network --release --failure-output immediate-final --success-output immediate-final
 
 # Runs the full workspace tests in **debug**, without downloading any additional test
 # vectors.
