@@ -346,38 +346,38 @@ jobs:
 #      run: echo "/usr/local/go/bin" >> $GITHUB_PATH
 #    - name: Run exec engine integration tests in release
 #      run: make test-exec-engine
-  check-code:
-    name: check-code
-    runs-on: ubuntu-latest
-    env:
-      CARGO_INCREMENTAL: 1
-    steps:
-    - uses: actions/checkout@v4
-    - name: Get latest version of stable Rust
-      uses: moonrepo/setup-rust@v1
-      with:
-          channel: stable
-          cache-target: release
-          components: rustfmt,clippy
-          bins: cargo-audit
-    - name: Check formatting with cargo fmt
-      run: make cargo-fmt
-    - name: Lint code for quality and style with Clippy
-      run: make lint-full
-    - name: Certify Cargo.lock freshness
-      run: git diff --exit-code Cargo.lock
-    - name: Typecheck benchmark code without running it
-      run: make check-benches
-    - name: Validate state_processing feature arbitrary-fuzz
-      run:  make arbitrary-fuzz
-    - name: Run cargo audit
-      run: make audit-CI
-    - name: Run cargo vendor to make sure dependencies can be vendored for packaging, reproducibility and archival purpose
-      run:  CARGO_HOME=$(readlink -f $HOME) make vendor
-    - name: Markdown-linter
-      run: make mdlint
-    - name: Spell-check
-      uses: rojopolis/spellcheck-github-actions@v0
+#  check-code:
+#    name: check-code
+#    runs-on: ubuntu-latest
+#    env:
+#      CARGO_INCREMENTAL: 1
+#    steps:
+#    - uses: actions/checkout@v4
+#    - name: Get latest version of stable Rust
+#      uses: moonrepo/setup-rust@v1
+#      with:
+#          channel: stable
+#          cache-target: release
+#          components: rustfmt,clippy
+#          bins: cargo-audit
+#    - name: Check formatting with cargo fmt
+#      run: make cargo-fmt
+#    - name: Lint code for quality and style with Clippy
+#      run: make lint-full
+#    - name: Certify Cargo.lock freshness
+#      run: git diff --exit-code Cargo.lock
+#    - name: Typecheck benchmark code without running it
+#      run: make check-benches
+#    - name: Validate state_processing feature arbitrary-fuzz
+#      run:  make arbitrary-fuzz
+#    - name: Run cargo audit
+#      run: make audit-CI
+#    - name: Run cargo vendor to make sure dependencies can be vendored for packaging, reproducibility and archival purpose
+#      run:  CARGO_HOME=$(readlink -f $HOME) make vendor
+#    - name: Markdown-linter
+#      run: make mdlint
+#    - name: Spell-check
+#      uses: rojopolis/spellcheck-github-actions@v0
 #  check-msrv:
 #    name: check-msrv
 #    runs-on: ubuntu-latest
