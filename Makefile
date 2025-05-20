@@ -112,7 +112,7 @@ test-release:
  		--exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network
 
 # Runs the full workspace tests in **release**, without downloading any additional
-# test vectors, using nextest.
+# test vectors, using nextest....
 nextest-release:
 	cargo nextest run --package lighthouse_network --release --failure-output immediate-final --success-output immediate-final
 
